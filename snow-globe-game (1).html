@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Bola Salju Ajaib - Snow Globe Game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    background: radial-gradient(ellipse at center top, #2a3b5c 0%, #14213d 40%, #0a0e1a 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* Bintang di langit */
+  .stars {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: twinkle 3s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* Judul */
+  h1 {
+    color: #ffe9b0;
+    text-align: center;
+    font-size: clamp(20px, 4vw, 32px);
+    text-shadow: 0 0 20px rgba(255, 200, 100, 0.6), 0 2px 4px rgba(0,0,0,0.5);
+    margin-bottom: 8px;
+    z-index: 10;
+    letter-spacing: 2px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    margin-bottom: 18px;
+    text-align: center;
+    z-index: 10;
+    letter-spacing: 0.5px;
+  }
+
+  /* Area snow globe */
+  .globe-stage {
+    position: relative;
+    width: min(420px, 88vw);
+    height: min(520px, 88vw);
+    z-index: 5;
+    cursor: grab;
+    touch-action: none;
+  }
+  .globe-stage:active { cursor: grabbing; }
+  .globe-stage.shaking { animation: globeShake 0.5s ease-in-out; }
+  @keyframes globeShake {
+    0%, 100% { transform: translate(0,0) rotate(0deg); }
+    15% { transform: translate(-8px, -3px) rotate(-3deg); }
+    30% { transform: translate(8px, -2px) rotate(3deg); }
+    45% { transform: translate(-6px, -1px) rotate(-2deg); }
+    60% { transform: translate(6px, 0) rotate(2deg); }
+    75% { transform: translate(-3px, 0) rotate(-1deg); }
+  }
+
+  /* Bola kaca */
+  .globe {
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    height: 88%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.1) 18%, transparent 35%),
+      radial-gradient(circle at 70% 75%, rgba(180,210,255,0.25) 0%, transparent 40%),
+      linear-gradient(180deg, rgba(135,206,235,0.18) 0%, rgba(70,130,180,0.12) 50%, rgba(25,25,112,0.18) 100%);
+    box-shadow:
+      inset 0 0 80px rgba(255,255,255,0.25),
+      inset -20px -30px 60px rgba(0,0,0,0.25),
+      inset 20px 30px 50px rgba(255,255,255,0.2),
+      0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  /* Kilauan kaca */
+  .globe::before {
+    content: '';
+    position: absolute;
+    top: 8%;
+    left: 18%;
+    width: 28%;
+    height: 22%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 40%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(2px);
+    pointer-events: none;
+    z-index: 20;
+  }
+  .globe::after {
+    content: '';
+    position: absolute;
+    top: 12%;
+    left: 22%;
+    width: 12%;
+    height: 10%;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  /* Canvas untuk salju */
+  #snowCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 15;
+    pointer-events: none;
+  }
+
+  /* Scene di dalam bola */
+  .scene {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  /* Tanah salju */
+  .snow-ground {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 32%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(240,245,255,0.95) 50%, #e8eef8 100%);
+    border-radius: 50% 50% 0 0 / 30% 30% 0 0;
+    box-shadow: 0 -5px 20px rgba(255,255,255,0.4);
+  }
+  .snow-ground::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -5%;
+    width: 60%;
+    height: 80%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.6), #f0f4fa);
+    border-radius: 50% 50% 0 0 / 40% 40% 0 0;
+  }
+  .snow-ground::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -5%;
+    width: 55%;
+    height: 70%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5), #e8edf5);
+    border-radius: 50% 50% 0 0 / 35% 35% 0 0;
+  }
+
+  /* Bulan */
+  .moon {
+    position: absolute;
+    top: 12%;
+    right: 18%;
+    width: 50px;
+    height: 50px;
+    background: radial-gradient(circle at 35% 35%, #fff8d6 0%, #ffe9a0 40%, #f0c860 80%);
+    border-radius: 50%;
+    box-shadow:
+      0 0 25px rgba(255, 235, 150, 0.7),
+      0 0 50px rgba(255, 235, 150, 0.4),
+      inset -8px -8px 14px rgba(180, 140, 80, 0.4);
+    z-index: 9;
+  }
+  .moon::after {
+    content: '';
+    position: absolute;
+    top: 28%;
+    left: 24%;
+    width: 8px;
+    height: 8px;
+    background: rgba(180, 140, 80, 0.35);
+    border-radius: 50%;
+    box-shadow:
+      14px 6px 0 -1px rgba(180, 140, 80, 0.3),
+      4px 18px 0 -2px rgba(180, 140, 80, 0.25);
+  }
+
+  /* Awan halus */
+  .cloud {
+    position: absolute;
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 60%, transparent 100%);
+    border-radius: 50%;
+    z-index: 9;
+    filter: blur(2px);
+  }
+  .cloud.c1 { top: 18%; left: 8%; width: 70px; height: 24px; }
+  .cloud.c2 { top: 26%; right: 8%; width: 60px; height: 20px; opacity: 0.7; }
+
+  /* Pohon Natal utama */
+  .tree {
+    position: absolute;
+    bottom: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34%;
+    height: 52%;
+    z-index: 12;
+  }
+  .tree-layer {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, #3a8a4f 0%, #1f4a2c 100%);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    box-shadow: inset -8px -4px 15px rgba(0,0,0,0.3), inset 8px 4px 12px rgba(255,255,255,0.18);
+  }
+  .tree-layer.l1 { bottom: 0; width: 100%; height: 35%; }
+  .tree-layer.l2 { bottom: 28%; width: 80%; height: 32%; }
+  .tree-layer.l3 { bottom: 55%; width: 62%; height: 30%; }
+  .tree-layer.l4 { bottom: 80%; width: 44%; height: 22%; }
+  .tree-layer.l5 { bottom: 100%; width: 28%; height: 14%; }
+
+  /* Trunk */
+  .tree-trunk {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10%;
+    height: 12%;
+    background: linear-gradient(180deg, #6b4226 0%, #4a2c18 100%);
+    border-radius: 2px;
+    box-shadow: inset -2px 0 4px rgba(0,0,0,0.4);
+  }
+
+  /* Bintang puncak */
+  .star-top {
+    position: absolute;
+    bottom: 112%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 22px;
+    background: radial-gradient(circle, #fff5b0 0%, #ffd700 50%, #ffa500 100%);
+    clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    filter: drop-shadow(0 0 10px #ffd700) drop-shadow(0 0 20px rgba(255,200,0,0.7));
+    animation: starGlow 2s ease-in-out infinite alternate;
+    z-index: 13;
+  }
+  @keyframes starGlow {
+    from { filter: drop-shadow(0 0 8px #ffd700) drop-shadow(0 0 14px rgba(255,200,0,0.5)); }
+    to { filter: drop-shadow(0 0 14px #ffd700) drop-shadow(0 0 26px rgba(255,200,0,0.95)); }
+  }
+
+  /* Ornament pohon */
+  .ornament {
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: 0 0 6px currentColor, inset -2px -2px 3px rgba(0,0,0,0.3), inset 2px 2px 3px rgba(255,255,255,0.5);
+    z-index: 13;
+  }
+
+  /* Lampu fairy (berkelap-kelip) */
+  .fairy-light {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    z-index: 14;
+    animation: fairyBlink 1.4s ease-in-out infinite;
+  }
+  @keyframes fairyBlink {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.3); }
+  }
+
+  /* === Rumah kayu yang lebih indah === */
+  .house {
+    position: absolute;
+    bottom: 24%;
+    left: 8%;
+    width: 30%;
+    height: 30%;
+    z-index: 11;
+  }
+  /* Badan rumah dengan kayu tekstur */
+  .house-body {
+    position: absolute;
+    bottom: 0;
+    left: 4%;
+    width: 92%;
+    height: 65%;
+    background:
+      repeating-linear-gradient(0deg,
+        rgba(0,0,0,0.18) 0, rgba(0,0,0,0.18) 2px,
+        transparent 2px, transparent 8px),
+      linear-gradient(180deg, #b07a45 0%, #8b5a2b 50%, #5a3a1a 100%);
+    border-radius: 3px;
+    box-shadow: inset 0 -4px 8px rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,0.2);
+  }
+  .house-body::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg,
+        transparent 0, transparent 20px,
+        rgba(0,0,0,0.08) 20px, rgba(0,0,0,0.08) 22px);
+  }
+  /* Atap dengan genteng */
+  .house-roof {
+    position: absolute;
+    top: 0;
+    left: -2%;
+    width: 104%;
+    height: 42%;
+    background: linear-gradient(180deg, #b8332a 0%, #8b1f1a 100%);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    box-shadow: inset -3px -3px 8px rgba(0,0,0,0.4), inset 3px 3px 6px rgba(255,255,255,0.15);
+  }
+  .house-roof::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg,
+        transparent 0, transparent 8px,
+        rgba(0,0,0,0.18) 8px, rgba(0,0,0,0.18) 9px);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  }
+  /* Salju di atap */
+  .house-roof::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(180deg, #f5f9ff 0%, #d8e4f0 100%);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    box-shadow: 0 2px 6px rgba(255,255,255,0.6);
+  }
+  /* Jendela hangat bercahaya */
+  .house-window {
+    position: absolute;
+    top: 50%;
+    left: 16%;
+    width: 24%;
+    height: 30%;
+    background:
+      radial-gradient(ellipse at center, #ffe89a 0%, #ffce4a 50%, #ff9d2e 100%);
+    border: 2px solid #4a2c18;
+    border-radius: 2px;
+    box-shadow:
+      0 0 14px rgba(255,180,0,0.85),
+      0 0 28px rgba(255,180,0,0.5),
+      inset 0 0 8px rgba(255, 220, 100, 0.6);
+    animation: windowFlicker 4s ease-in-out infinite;
+  }
+  @keyframes windowFlicker {
+    0%, 95%, 100% { box-shadow: 0 0 14px rgba(255,180,0,0.85), 0 0 28px rgba(255,180,0,0.5), inset 0 0 8px rgba(255, 220, 100, 0.6); }
+    97% { box-shadow: 0 0 8px rgba(255,180,0,0.5), 0 0 14px rgba(255,180,0,0.3), inset 0 0 4px rgba(255, 220, 100, 0.4); }
+  }
+  .house-window::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #4a2c18;
+    transform: translateY(-50%);
+  }
+  .house-window::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: #4a2c18;
+    transform: translateX(-50%);
+  }
+  /* Jendela kedua */
+  .house-window2 {
+    position: absolute;
+    top: 50%;
+    right: 14%;
+    width: 18%;
+    height: 26%;
+    background: radial-gradient(ellipse at center, #ffe89a 0%, #ffce4a 60%, #ff9d2e 100%);
+    border: 2px solid #4a2c18;
+    border-radius: 2px;
+    box-shadow: 0 0 12px rgba(255,180,0,0.8), 0 0 24px rgba(255,180,0,0.45);
+    animation: windowFlicker 5s ease-in-out infinite;
+    animation-delay: 0.7s;
+  }
+  .house-window2::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 0;
+    width: 100%; height: 2px;
+    background: #4a2c18;
+    transform: translateY(-50%);
+  }
+  .house-window2::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%;
+    width: 2px; height: 100%;
+    background: #4a2c18;
+    transform: translateX(-50%);
+  }
+  /* Pintu kayu */
+  .house-door {
+    position: absolute;
+    bottom: 0;
+    left: 44%;
+    width: 22%;
+    height: 42%;
+    background:
+      linear-gradient(180deg, #3a2010 0%, #1a0f05 100%);
+    border-radius: 8px 8px 0 0;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.4), inset -2px 0 4px rgba(0,0,0,0.5);
+  }
+  .house-door::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    background: repeating-linear-gradient(0deg,
+      transparent 0, transparent 6px,
+      rgba(255,255,255,0.04) 6px, rgba(255,255,255,0.04) 7px);
+    border-radius: 4px;
+  }
+  /* Wreath di pintu */
+  .house-door::after {
+    content: '';
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    border: 2px solid #2d6b3f;
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(45, 107, 63, 0.6), inset 0 0 3px #1f4a2c;
+  }
+  /* Cerobong asap */
+  .house-chimney {
+    position: absolute;
+    top: 8%;
+    right: 22%;
+    width: 12%;
+    height: 22%;
+    background: linear-gradient(180deg, #8b5a2b 0%, #5a3a1a 100%);
+    border-radius: 2px;
+    box-shadow: inset -3px 0 5px rgba(0,0,0,0.4), inset 3px 0 4px rgba(255,255,255,0.15);
+    z-index: 2;
+  }
+  .house-chimney::before {
+    content: '';
+    position: absolute;
+    top: -6%;
+    left: -8%;
+    width: 116%;
+    height: 18%;
+    background: linear-gradient(180deg, #fff 0%, #d8e4f0 100%);
+    border-radius: 4px 4px 0 0;
+  }
+  /* Asap dari cerobong */
+  .smoke {
+    position: absolute;
+    top: -2%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 60%, transparent 100%);
+    border-radius: 50%;
+    filter: blur(3px);
+    animation: smokeRise 4s ease-out infinite;
+    z-index: 1;
+  }
+  .smoke.s2 { animation-delay: 1.3s; }
+  .smoke.s3 { animation-delay: 2.6s; }
+  @keyframes smokeRise {
+    0% { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+    20% { opacity: 0.7; }
+    100% { opacity: 0; transform: translate(-80%, -55px) scale(1.8); }
+  }
+
+  /* === Pohon cemara (beberapa) === */
+  .pine {
+    position: absolute;
+    z-index: 10;
+  }
+  .pine-layer {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, #3a7a4a 0%, #1f4a2c 100%);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    box-shadow: inset -3px -2px 6px rgba(0,0,0,0.3), inset 3px 2px 4px rgba(255,255,255,0.12);
+  }
+  .pine-trunk {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14%;
+    height: 14%;
+    background: linear-gradient(180deg, #5a3a1a 0%, #3a2010 100%);
+    border-radius: 1px;
+  }
+  /* Salju di puncak cemara */
+  .pine-cap {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30%;
+    height: 5%;
+    background: #fff;
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    opacity: 0.85;
+  }
+  .pine.p1 { bottom: 23%; right: 7%; width: 18%; height: 30%; }
+  .pine.p1 .pine-layer.pl1 { bottom: 14%; width: 100%; height: 50%; }
+  .pine.p1 .pine-layer.pl2 { bottom: 42%; width: 75%; height: 35%; }
+  .pine.p1 .pine-layer.pl3 { bottom: 65%; width: 50%; height: 25%; }
+  .pine.p1 .pine-cap { bottom: 88%; }
+
+  .pine.p2 { bottom: 22%; left: 2%; width: 12%; height: 22%; }
+  .pine.p2 .pine-layer.pl1 { bottom: 14%; width: 100%; height: 50%; }
+  .pine.p2 .pine-layer.pl2 { bottom: 42%; width: 75%; height: 35%; }
+  .pine.p2 .pine-layer.pl3 { bottom: 65%; width: 50%; height: 25%; }
+  .pine.p2 .pine-cap { bottom: 88%; }
+
+  .pine.p3 { bottom: 23%; right: 28%; width: 9%; height: 17%; opacity: 0.85; }
+  .pine.p3 .pine-layer.pl1 { bottom: 14%; width: 100%; height: 50%; }
+  .pine.p3 .pine-layer.pl2 { bottom: 42%; width: 75%; height: 35%; }
+  .pine.p3 .pine-layer.pl3 { bottom: 65%; width: 50%; height: 25%; }
+  .pine.p3 .pine-cap { bottom: 88%; }
+
+  /* === Lampu jalan (lentera) === */
+  .lamp {
+    position: absolute;
+    bottom: 22%;
+    left: 42%;
+    width: 6%;
+    height: 18%;
+    z-index: 11;
+  }
+  .lamp-pole {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12%;
+    height: 75%;
+    background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+    border-radius: 2px;
+  }
+  .lamp-head {
+    position: absolute;
+    top: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    height: 28%;
+    background:
+      radial-gradient(ellipse at center, #fff8d0 0%, #ffe060 50%, #ff9500 100%);
+    border-radius: 4px 4px 50% 50% / 4px 4px 100% 100%;
+    box-shadow:
+      0 0 16px rgba(255, 220, 100, 0.9),
+      0 0 32px rgba(255, 200, 80, 0.6),
+      0 0 60px rgba(255, 180, 60, 0.35);
+    animation: lampGlow 3s ease-in-out infinite alternate;
+  }
+  @keyframes lampGlow {
+    from { box-shadow: 0 0 14px rgba(255, 220, 100, 0.85), 0 0 28px rgba(255, 200, 80, 0.55), 0 0 50px rgba(255, 180, 60, 0.3); }
+    to { box-shadow: 0 0 20px rgba(255, 220, 100, 1), 0 0 38px rgba(255, 200, 80, 0.75), 0 0 70px rgba(255, 180, 60, 0.45); }
+  }
+  .lamp-base {
+    position: absolute;
+    bottom: -4%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    height: 8%;
+    background: #2a2a2a;
+    border-radius: 4px;
+  }
+
+  /* === Rusa Sinterklas === */
+  .reindeer {
+    position: absolute;
+    bottom: 20%;
+    right: 32%;
+    width: 16%;
+    height: 14%;
+    z-index: 11;
+  }
+  .reindeer-body {
+    position: absolute;
+    bottom: 30%;
+    left: 18%;
+    width: 60%;
+    height: 40%;
+    background: linear-gradient(180deg, #8b5a2b 0%, #5a3a1a 100%);
+    border-radius: 50% 30% 30% 50% / 60% 40% 40% 60%;
+    box-shadow: inset -3px -2px 6px rgba(0,0,0,0.3);
+  }
+  .reindeer-head {
+    position: absolute;
+    top: 18%;
+    right: 0;
+    width: 28%;
+    height: 36%;
+    background: linear-gradient(180deg, #8b5a2b 0%, #5a3a1a 100%);
+    border-radius: 50% 50% 30% 30%;
+  }
+  .reindeer-antler {
+    position: absolute;
+    top: -8%;
+    right: 4%;
+    width: 22%;
+    height: 30%;
+    border-left: 2px solid #3a2010;
+    border-top: 2px solid #3a2010;
+    border-radius: 50% 0 0 0;
+  }
+  .reindeer-antler::before {
+    content: '';
+    position: absolute;
+    top: -20%;
+    left: -20%;
+    width: 60%;
+    height: 30%;
+    border-left: 2px solid #3a2010;
+    border-top: 2px solid #3a2010;
+    border-radius: 50% 0 0 0;
+    transform: rotate(-30deg);
+  }
+  .reindeer-leg {
+    position: absolute;
+    bottom: 0;
+    width: 8%;
+    height: 30%;
+    background: #3a2010;
+    border-radius: 0 0 40% 40%;
+  }
+  .reindeer-leg.l1 { left: 25%; }
+  .reindeer-leg.l2 { left: 42%; }
+  .reindeer-leg.l3 { left: 60%; }
+  .reindeer-leg.l4 { left: 75%; }
+  .reindeer-nose {
+    position: absolute;
+    top: 35%;
+    right: -4%;
+    width: 12%;
+    height: 12%;
+    background: radial-gradient(circle, #ff4040 0%, #c00000 80%);
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff2020, 0 0 16px rgba(255, 30, 30, 0.7);
+    animation: noseGlow 1.5s ease-in-out infinite alternate;
+  }
+  @keyframes noseGlow {
+    from { box-shadow: 0 0 6px #ff2020, 0 0 12px rgba(255, 30, 30, 0.6); }
+    to { box-shadow: 0 0 12px #ff2020, 0 0 24px rgba(255, 30, 30, 0.95); }
+  }
+  .reindeer-tail {
+    position: absolute;
+    bottom: 38%;
+    left: 8%;
+    width: 16%;
+    height: 16%;
+    background: #fff;
+    border-radius: 50%;
+  }
+
+  /* === Hadiah/kado === */
+  .gift {
+    position: absolute;
+    z-index: 11;
+  }
+  .gift-box {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 80%;
+    border-radius: 3px;
+    box-shadow: inset 0 -4px 6px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.3);
+  }
+  .gift-ribbon-v {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22%;
+    height: 100%;
+    background: linear-gradient(180deg, #ffd700, #c89860);
+    box-shadow: inset -1px 0 2px rgba(0,0,0,0.3);
+  }
+  .gift-ribbon-h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 22%;
+    background: linear-gradient(90deg, #ffd700, #c89860);
+    box-shadow: inset 0 -1px 2px rgba(0,0,0,0.3);
+  }
+  .gift-bow {
+    position: absolute;
+    top: -16%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50%;
+    height: 30%;
+    background: radial-gradient(ellipse at center, #ffd700 0%, #c89860 80%);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+  }
+  .gift-bow::before, .gift-bow::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50%;
+    height: 100%;
+    background: radial-gradient(ellipse, #ffe060 0%, #c89860 80%);
+    border-radius: 50%;
+  }
+  .gift-bow::before { left: -8%; transform: translateY(-50%) rotate(-15deg); }
+  .gift-bow::after { right: -8%; transform: translateY(-50%) rotate(15deg); }
+  .gift.g1 { bottom: 21%; left: 30%; width: 6%; height: 7%; }
+  .gift.g1 .gift-box { background: linear-gradient(180deg, #ff4757 0%, #c92a2a 100%); }
+  .gift.g2 { bottom: 21%; left: 37%; width: 5%; height: 6%; }
+  .gift.g2 .gift-box { background: linear-gradient(180deg, #5352ed 0%, #2c2a8a 100%); }
+  .gift.g3 { bottom: 21%; left: 26%; width: 4%; height: 5%; }
+  .gift.g3 .gift-box { background: linear-gradient(180deg, #26de81 0%, #1a8e54 100%); }
+
+  /* === Semak bercahaya (bonus redup) === */
+  .bush {
+    position: absolute;
+    bottom: 22%;
+    left: 45%;
+    width: 8%;
+    height: 7%;
+    background: radial-gradient(circle at 40% 50%, #2d6b3f 0%, #1a4226 100%);
+    border-radius: 50% 50% 30% 30% / 60% 60% 30% 30%;
+    box-shadow: inset -3px -2px 6px rgba(0,0,0,0.4), inset 2px 2px 4px rgba(255,255,255,0.15);
+    z-index: 10;
+  }
+  .bush::before {
+    content: '';
+    position: absolute;
+    top: 10%;
+    left: 25%;
+    width: 4px; height: 4px;
+    background: #ff4757;
+    border-radius: 50%;
+    box-shadow: 0 0 4px #ff4757, 12px 2px 0 #ffd700, 6px 8px 0 #5352ed;
+  }
+
+  /* === Jalan setapak === */
+  .path {
+    position: absolute;
+    bottom: 21%;
+    left: 32%;
+    width: 38%;
+    height: 6%;
+    background: linear-gradient(180deg,
+      rgba(180, 160, 120, 0.3) 0%,
+      rgba(200, 180, 140, 0.5) 50%,
+      rgba(220, 200, 160, 0.7) 100%);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    transform: rotate(-5deg);
+    transform-origin: left bottom;
+    z-index: 9;
+    opacity: 0.6;
+  }
+
+  /* Dasar bola (wood base) */
+  .base {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 78%;
+    height: 16%;
+    z-index: 8;
+  }
+  .base-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 28%;
+    background: linear-gradient(180deg, #d4a056 0%, #b8842f 100%);
+    border-radius: 50% / 100%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.4);
+  }
+  .base-mid {
+    position: absolute;
+    top: 22%;
+    left: 0;
+    width: 100%;
+    height: 55%;
+    background:
+      repeating-linear-gradient(90deg,
+        rgba(0,0,0,0.08) 0, rgba(0,0,0,0.08) 2px, transparent 2px, transparent 18px),
+      linear-gradient(180deg, #c89860 0%, #8b5a2b 100%);
+    border-left: 3px solid #6b4226;
+    border-right: 3px solid #6b4226;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
+  }
+  .base-bottom {
+    position: absolute;
+    bottom: 0;
+    left: -3%;
+    width: 106%;
+    height: 28%;
+    background: linear-gradient(180deg, #8b5a2b 0%, #4a2c18 100%);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  }
+  .base-plate {
+    position: absolute;
+    bottom: 22%;
+    left: 35%;
+    width: 30%;
+    height: 6%;
+    background: linear-gradient(180deg, #ffd700 0%, #c89860 100%);
+    border-radius: 2px;
+    box-shadow: 0 0 4px rgba(255,215,0,0.5);
+  }
+
+  /* HUD - skor */
+  .hud {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 20;
+  }
+  .stat-card {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 8px 16px;
+    color: white;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+  .stat-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffe9b0;
+  }
+
+  /* Countdown Natal & Tahun Baru */
+  .countdown-wrap {
+    position: absolute;
+    top: 92px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    width: min(420px, 88vw);
+  }
+  .countdown-card {
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 14px;
+    padding: 8px 12px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .countdown-card.christmas {
+    border-left: 3px solid #ff4757;
+    background: linear-gradient(90deg, rgba(255,71,87,0.18) 0%, rgba(255,255,255,0.1) 35%);
+  }
+  .countdown-card.newyear {
+    border-left: 3px solid #ffd700;
+    background: linear-gradient(90deg, rgba(255,215,0,0.18) 0%, rgba(255,255,255,0.1) 35%);
+  }
+  .countdown-card.celebrate {
+    animation: celebratePulse 1.2s ease-in-out infinite;
+  }
+  .countdown-card.near {
+    box-shadow: 0 0 22px rgba(255,200,100,0.45), 0 4px 15px rgba(0,0,0,0.3);
+    border-color: rgba(255,215,0,0.6);
+  }
+  @keyframes celebratePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 18px rgba(255,215,0,0.5); }
+    50% { transform: scale(1.025); box-shadow: 0 0 32px rgba(255,215,0,0.9); }
+  }
+  .countdown-icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .countdown-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .countdown-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffe9b0;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+  .countdown-date {
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    margin-top: 1px;
+  }
+  .countdown-time {
+    display: flex;
+    gap: 4px;
+    align-items: baseline;
+  }
+  .countdown-unit {
+    text-align: center;
+    min-width: 30px;
+  }
+  .countdown-num {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffe9b0;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .countdown-lbl {
+    font-size: 8px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+  }
+  .countdown-celebrate-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffe9b0;
+    text-align: center;
+    width: 100%;
+    letter-spacing: 0.5px;
+  }
+
+  /* Instruksi */
+  .instructions {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.6);
+    font-size: 13px;
+    text-align: center;
+    z-index: 10;
+    padding: 8px 18px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    max-width: 90%;
+  }
+  .instructions strong { color: #ffe9b0; }
+
+  /* Tombol shake */
+  .shake-btn {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 20;
+    box-shadow: 0 6px 20px rgba(201,42,42,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    letter-spacing: 1px;
+  }
+  .shake-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 8px 24px rgba(201,42,42,0.6);
+  }
+  .shake-btn:active {
+    transform: translateX(-50%) translateY(1px);
+    box-shadow: 0 3px 10px rgba(201,42,42,0.4);
+  }
+
+  /* Pesan muncul */
+  .floating-msg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #ffe9b0;
+    font-size: 28px;
+    font-weight: 700;
+    text-shadow: 0 0 20px rgba(255,200,100,0.8), 0 2px 6px rgba(0,0,0,0.5);
+    z-index: 30;
+    opacity: 0;
+    pointer-events: none;
+    text-align: center;
+  }
+  .floating-msg.show {
+    animation: floatMsg 1.2s ease-out;
+  }
+  @keyframes floatMsg {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+
+  /* Responsive */
+  @media (max-width: 480px) {
+    .hud { top: 10px; }
+    .stat-card { padding: 6px 12px; }
+    .stat-value { font-size: 16px; }
+    .countdown-wrap { top: 78px; gap: 6px; }
+    .countdown-card { padding: 6px 10px; }
+    .countdown-icon { font-size: 18px; }
+    .countdown-title { font-size: 11px; }
+    .countdown-date { font-size: 9px; }
+    .countdown-num { font-size: 14px; }
+    .countdown-lbl { font-size: 7px; }
+    .countdown-unit { min-width: 26px; }
+    .instructions { font-size: 11px; padding: 6px 14px; bottom: 12px; }
+    .shake-btn { bottom: 60px; padding: 10px 26px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+  <div class="stars" id="stars"></div>
+
+  <h1>❄ Bola Salju Ajaib ❄</h1>
+  <p class="subtitle">Hitung mundur ke Hari Raya Natal & Tahun Baru - semakin dekat, semakin deras saljunya!</p>
+
+  <div class="hud">
+    <div class="stat-card">
+      <div class="stat-label">Shake</div>
+      <div class="stat-value" id="shakeCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Salju</div>
+      <div class="stat-value" id="snowCount">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Level</div>
+      <div class="stat-value" id="level">1</div>
+    </div>
+  </div>
+
+  <div class="countdown-wrap">
+    <div class="countdown-card christmas" id="xmasCard">
+      <div class="countdown-icon">🎄</div>
+      <div class="countdown-info">
+        <div class="countdown-title">Hari Raya Natal</div>
+        <div class="countdown-date" id="xmasDate">25 Des</div>
+      </div>
+      <div class="countdown-time" id="xmasTime">
+        <div class="countdown-unit"><div class="countdown-num" id="xmasDays">0</div><div class="countdown-lbl">hari</div></div>
+        <div class="countdown-unit"><div class="countdown-num" id="xmasHours">0</div><div class="countdown-lbl">jam</div></div>
+        <div class="countdown-unit"><div class="countdown-num" id="xmasMins">0</div><div class="countdown-lbl">mnt</div></div>
+        <div class="countdown-unit"><div class="countdown-num" id="xmasSecs">0</div><div class="countdown-lbl">dtk</div></div>
+      </div>
+    </div>
+    <div class="countdown-card newyear" id="nyCard">
+      <div class="countdown-icon">🎆</div>
+      <div class="countdown-info">
+        <div class="countdown-title">Tahun Baru Masehi</div>
+        <div class="countdown-date" id="nyDate">1 Jan</div>
+      </div>
+      <div class="countdown-time" id="nyTime">
+        <div class="countdown-unit"><div class="countdown-num" id="nyDays">0</div><div class="countdown-lbl">hari</div></div>
+        <div class="countdown-unit"><div class="countdown-num" id="nyHours">0</div><div class="countdown-lbl">jam</div></div>
+        <div class="countdown-unit"><div class="countdown-num" id="nyMins">0</div><div class="countdown-lbl">mnt</div></div>
+        <div class="countdown-unit"><div class="countdown-num" id="nySecs">0</div><div class="countdown-lbl">dtk</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="globe-stage" id="globeStage">
+    <div class="globe" id="globe">
+      <canvas id="snowCanvas"></canvas>
+      <div class="scene">
+        <div class="snow-ground"></div>
+
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+        <div class="moon"></div>
+        <div class="path"></div>
+
+        <div class="house">
+          <div class="house-chimney">
+            <div class="smoke"></div>
+            <div class="smoke s2"></div>
+            <div class="smoke s3"></div>
+          </div>
+          <div class="house-roof"></div>
+          <div class="house-body"></div>
+          <div class="house-window"></div>
+          <div class="house-window2"></div>
+          <div class="house-door"></div>
+        </div>
+
+        <div class="pine p2">
+          <div class="pine-trunk"></div>
+          <div class="pine-layer pl1"></div>
+          <div class="pine-layer pl2"></div>
+          <div class="pine-layer pl3"></div>
+          <div class="pine-cap"></div>
+        </div>
+
+        <div class="pine p3">
+          <div class="pine-trunk"></div>
+          <div class="pine-layer pl1"></div>
+          <div class="pine-layer pl2"></div>
+          <div class="pine-layer pl3"></div>
+          <div class="pine-cap"></div>
+        </div>
+
+        <div class="reindeer">
+          <div class="reindeer-body"></div>
+          <div class="reindeer-tail"></div>
+          <div class="reindeer-leg l1"></div>
+          <div class="reindeer-leg l2"></div>
+          <div class="reindeer-leg l3"></div>
+          <div class="reindeer-leg l4"></div>
+          <div class="reindeer-head"></div>
+          <div class="reindeer-antler"></div>
+          <div class="reindeer-nose"></div>
+        </div>
+
+        <div class="gift g3"><div class="gift-box"></div><div class="gift-ribbon-v"></div><div class="gift-ribbon-h"></div><div class="gift-bow"></div></div>
+        <div class="gift g1"><div class="gift-box"></div><div class="gift-ribbon-v"></div><div class="gift-ribbon-h"></div><div class="gift-bow"></div></div>
+        <div class="gift g2"><div class="gift-box"></div><div class="gift-ribbon-v"></div><div class="gift-ribbon-h"></div><div class="gift-bow"></div></div>
+
+        <div class="lamp">
+          <div class="lamp-base"></div>
+          <div class="lamp-pole"></div>
+          <div class="lamp-head"></div>
+        </div>
+
+        <div class="bush"></div>
+
+        <div class="pine p1">
+          <div class="pine-trunk"></div>
+          <div class="pine-layer pl1"></div>
+          <div class="pine-layer pl2"></div>
+          <div class="pine-layer pl3"></div>
+          <div class="pine-cap"></div>
+        </div>
+
+        <div class="tree">
+          <div class="tree-trunk"></div>
+          <div class="tree-layer l1"></div>
+          <div class="tree-layer l2"></div>
+          <div class="tree-layer l3"></div>
+          <div class="tree-layer l4"></div>
+          <div class="tree-layer l5"></div>
+          <div class="star-top"></div>
+        </div>
+      </div>
+    </div>
+    <div class="base">
+      <div class="base-top"></div>
+      <div class="base-mid"></div>
+      <div class="base-bottom"></div>
+      <div class="base-plate"></div>
+    </div>
+    <div class="floating-msg" id="floatingMsg"></div>
+  </div>
+
+  <button class="shake-btn" id="shakeBtn">❄ GOYANGKAN ❄</button>
+
+  <div class="instructions">
+    <strong>Cara bermain:</strong> Klik bola, klik tombol "GOYANGKAN", atau goyangkan HP-mu! Salju akan bertambah perlahan seiring mendekati Hari Raya Natal (25 Des) & Tahun Baru (1 Jan).
+  </div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ====== Element refs ======
+  const globeStage = document.getElementById('globeStage');
+  const globe = document.getElementById('globe');
+  const canvas = document.getElementById('snowCanvas');
+  const ctx = canvas.getContext('2d');
+  const shakeBtn = document.getElementById('shakeBtn');
+  const shakeCountEl = document.getElementById('shakeCount');
+  const snowCountEl = document.getElementById('snowCount');
+  const levelEl = document.getElementById('level');
+  const floatingMsg = document.getElementById('floatingMsg');
+  const starsContainer = document.getElementById('stars');
+
+  // ====== State ======
+  const state = {
+    snowflakes: [],
+    shakeCount: 0,
+    level: 1,
+    shakeIntensity: 0,    // 0..1, untuk menentukan kecepatan salju
+    ambient: 0.15,        // salju lingkungan baseline
+    width: 0,
+    height: 0,
+    lastAmbientSpawn: 0,
+    // Countdown & festivity
+    festivityFactor: 0,   // 0..1, 1 = hari H, 0 = jauh (>60 hari)
+    nearestDays: 999,
+    nextChristmas: null,
+    nextNewYear: null,
+    isXmasDay: false,
+    isNewYearDay: false,
+    celebratedXmas: false,
+    celebratedNY: false,
+  };
+
+  // ====== Element refs untuk countdown ======
+  const xmasCard = document.getElementById('xmasCard');
+  const nyCard = document.getElementById('nyCard');
+  const xmasDateEl = document.getElementById('xmasDate');
+  const nyDateEl = document.getElementById('nyDate');
+  const xmasDaysEl = document.getElementById('xmasDays');
+  const xmasHoursEl = document.getElementById('xmasHours');
+  const xmasMinsEl = document.getElementById('xmasMins');
+  const xmasSecsEl = document.getElementById('xmasSecs');
+  const nyDaysEl = document.getElementById('nyDays');
+  const nyHoursEl = document.getElementById('nyHours');
+  const nyMinsEl = document.getElementById('nyMins');
+  const nySecsEl = document.getElementById('nySecs');
+  const xmasTimeEl = document.getElementById('xmasTime');
+  const nyTimeEl = document.getElementById('nyTime');
+
+  const MONTHS_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const DAYS_ID = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+  // ====== Hitung hari libur berikutnya ======
+  function getNextHoliday(now, month, day) {
+    const year = now.getFullYear();
+    let holiday = new Date(year, month, day, 0, 0, 0);
+    // Bandingkan tanggal (tanpa waktu)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    if (todayStart > holiday) {
+      holiday = new Date(year + 1, month, day, 0, 0, 0);
+    }
+    return holiday;
+  }
+
+  function isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth() === b.getMonth() &&
+           a.getDate() === b.getDate();
+  }
+
+  function formatHolidayDate(d) {
+    return DAYS_ID[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS_ID[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  function splitTime(diffMs) {
+    // Handle negatif (hari H)
+    const safe = Math.max(0, diffMs);
+    const totalSec = Math.floor(safe / 1000);
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
+    return { days, hours, mins, secs };
+  }
+
+  function pad(n) {
+    return n < 10 ? '0' + n : '' + n;
+  }
+
+  // ====== Update countdown ======
+  function updateCountdown() {
+    const now = new Date();
+
+    // Hitung hari libur berikutnya (di-refresh tiap detik untuk antisipasi tahun baru)
+    state.nextChristmas = getNextHoliday(now, 11, 25); // 25 Desember
+    state.nextNewYear = getNextHoliday(now, 0, 1);      // 1 Januari
+
+    const diffXmas = state.nextChristmas - now;
+    const diffNY = state.nextNewYear - now;
+
+    const xmas = splitTime(diffXmas);
+    const ny = splitTime(diffNY);
+
+    // Cek apakah hari ini adalah hari libur
+    state.isXmasDay = isSameDay(now, state.nextChristmas) ||
+                      (now.getMonth() === 11 && now.getDate() === 25);
+    state.isNewYearDay = isSameDay(now, state.nextNewYear) ||
+                          (now.getMonth() === 0 && now.getDate() === 1);
+
+    // Update tanggal display
+    xmasDateEl.textContent = formatHolidayDate(state.nextChristmas);
+    nyDateEl.textContent = formatHolidayDate(state.nextNewYear);
+
+    // Update angka countdown
+    if (state.isXmasDay && diffXmas <= 0) {
+      xmasDaysEl.textContent = '0'; xmasHoursEl.textContent = '00';
+      xmasMinsEl.textContent = '00'; xmasSecsEl.textContent = '00';
+      xmasCard.classList.add('celebrate');
+      xmasTimeEl.style.display = 'none';
+      if (!xmasCard.querySelector('.countdown-celebrate-text')) {
+        const t = document.createElement('div');
+        t.className = 'countdown-celebrate-text';
+        t.textContent = '🎉 SELAMAT HARI NATAL! 🎉';
+        xmasCard.appendChild(t);
+      }
+    } else {
+      xmasDaysEl.textContent = xmas.days;
+      xmasHoursEl.textContent = pad(xmas.hours);
+      xmasMinsEl.textContent = pad(xmas.mins);
+      xmasSecsEl.textContent = pad(xmas.secs);
+      xmasTimeEl.style.display = '';
+      const celeb = xmasCard.querySelector('.countdown-celebrate-text');
+      if (celeb) celeb.remove();
+      xmasCard.classList.remove('celebrate');
+      // Pulse jika dekat (<=7 hari)
+      if (xmas.days <= 7) xmasCard.classList.add('near');
+      else xmasCard.classList.remove('near');
+    }
+
+    if (state.isNewYearDay && diffNY <= 0) {
+      nyDaysEl.textContent = '0'; nyHoursEl.textContent = '00';
+      nyMinsEl.textContent = '00'; nySecsEl.textContent = '00';
+      nyCard.classList.add('celebrate');
+      nyTimeEl.style.display = 'none';
+      if (!nyCard.querySelector('.countdown-celebrate-text')) {
+        const t = document.createElement('div');
+        t.className = 'countdown-celebrate-text';
+        t.textContent = '🎆 SELAMAT TAHUN BARU! 🎆';
+        nyCard.appendChild(t);
+      }
+    } else {
+      nyDaysEl.textContent = ny.days;
+      nyHoursEl.textContent = pad(ny.hours);
+      nyMinsEl.textContent = pad(ny.mins);
+      nySecsEl.textContent = pad(ny.secs);
+      nyTimeEl.style.display = '';
+      const celeb = nyCard.querySelector('.countdown-celebrate-text');
+      if (celeb) celeb.remove();
+      nyCard.classList.remove('celebrate');
+      if (ny.days <= 7) nyCard.classList.add('near');
+      else nyCard.classList.remove('near');
+    }
+
+    // Festivity factor: berdasarkan hari libur TERDEKAT
+    state.nearestDays = Math.min(xmas.days, ny.days);
+    // 60 hari = baseline; 0 hari = maksimal festive
+    state.festivityFactor = Math.max(0, Math.min(1, 1 - state.nearestDays / 60));
+    // Boost ekstra pada hari H
+    if (state.isXmasDay || state.isNewYearDay) {
+      state.festivityFactor = 1;
+    }
+
+    // Auto-celebrate: trigger pesan & shake lembut pada hari H (sekali)
+    if (state.isXmasDay && !state.celebratedXmas) {
+      state.celebratedXmas = true;
+      showFloatingMsg('🎅 SELAMAT HARI NATAL! 🎄');
+      shake(1.0);
+    }
+    if (state.isNewYearDay && !state.celebratedNY) {
+      state.celebratedNY = true;
+      showFloatingMsg('🎆 SELAMAT TAHUN BARU! 🎊');
+      shake(1.0);
+    }
+  }
+
+  // ====== Bintang di langit ======
+  function createStars() {
+    const num = 60;
+    for (let i = 0; i < num; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      const size = Math.random() * 2 + 0.5;
+      star.style.width = size + 'px';
+      star.style.height = size + 'px';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 70 + '%';
+      star.style.animationDelay = Math.random() * 3 + 's';
+      starsContainer.appendChild(star);
+    }
+  }
+
+  // ====== Tambah ornament pohon secara dinamis ======
+  function createOrnaments() {
+    const tree = document.querySelector('.tree');
+    const colors = ['#ff4757', '#ffd700', '#5352ed', '#26de81', '#fd9644', '#ff6b9d'];
+    const positions = [
+      {x: 30, y: 20}, {x: 70, y: 18}, {x: 20, y: 45}, {x: 78, y: 42},
+      {x: 40, y: 55}, {x: 60, y: 55}, {x: 30, y: 75}, {x: 70, y: 72},
+      {x: 45, y: 82}, {x: 55, y: 85}, {x: 50, y: 35}, {x: 25, y: 30}
+    ];
+    positions.forEach((p, i) => {
+      const o = document.createElement('div');
+      o.className = 'ornament';
+      const size = 6 + Math.random() * 4;
+      o.style.width = size + 'px';
+      o.style.height = size + 'px';
+      o.style.left = p.x + '%';
+      o.style.top = p.y + '%';
+      o.style.color = colors[i % colors.length];
+      o.style.background = `radial-gradient(circle at 30% 30%, white 0%, ${colors[i % colors.length]} 60%)`;
+      tree.appendChild(o);
+    });
+  }
+
+  // ====== Tambah lampu fairy berkelap-kelip di pohon ======
+  function createFairyLights() {
+    const tree = document.querySelector('.tree');
+    const lightColors = ['#ff2020', '#ffdd00', '#00ff88', '#00aaff', '#ff66ff', '#ff8800'];
+    // Pola garis-garis melingkar di pohon (zig-zag dari atas ke bawah)
+    const positions = [
+      // lapisan atas
+      {x: 50, y: 25}, {x: 42, y: 30}, {x: 58, y: 30}, {x: 46, y: 36}, {x: 54, y: 36},
+      // lapisan tengah-atas
+      {x: 40, y: 45}, {x: 60, y: 45}, {x: 35, y: 50}, {x: 65, y: 50}, {x: 50, y: 48},
+      // lapisan tengah
+      {x: 28, y: 60}, {x: 72, y: 60}, {x: 38, y: 62}, {x: 62, y: 62}, {x: 50, y: 60},
+      // lapisan bawah
+      {x: 22, y: 75}, {x: 78, y: 75}, {x: 30, y: 80}, {x: 70, y: 80}, {x: 50, y: 78},
+      {x: 18, y: 88}, {x: 82, y: 88}, {x: 40, y: 92}, {x: 60, y: 92}
+    ];
+    positions.forEach((p, i) => {
+      const l = document.createElement('div');
+      l.className = 'fairy-light';
+      const color = lightColors[i % lightColors.length];
+      l.style.left = p.x + '%';
+      l.style.top = p.y + '%';
+      l.style.background = `radial-gradient(circle, white 0%, ${color} 60%, transparent 100%)`;
+      l.style.boxShadow = `0 0 6px ${color}, 0 0 12px ${color}`;
+      l.style.animationDelay = (i * 0.13) + 's';
+      l.style.animationDuration = (1.2 + Math.random() * 0.8) + 's';
+      tree.appendChild(l);
+    });
+  }
+
+  // ====== Resize canvas ======
+  function resizeCanvas() {
+    const rect = globe.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    state.width = rect.width;
+    state.height = rect.height;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // ====== Snowflake class ======
+  class Snowflake {
+    constructor(opts) {
+      opts = opts || {};
+      this.reset(opts);
+    }
+    reset(opts) {
+      this.x = opts.x !== undefined ? opts.x : Math.random() * state.width;
+      this.y = opts.y !== undefined ? opts.y : -10;
+      // Saat digoyang, salju bisa dimulai dari bawah dan naik (seperti diaduk)
+      this.rising = opts.rising || false;
+      this.radius = Math.max(0.5, Math.random() * 2.8 + 0.6);
+      this.baseVy = this.rising
+        ? -(Math.random() * 2.5 + 1.5)   // naik
+        : (Math.random() * 0.8 + 0.3);   // turun perlahan
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.opacity = Math.random() * 0.6 + 0.4;
+      this.sway = Math.random() * 2 * Math.PI;
+      this.swaySpeed = Math.random() * 0.02 + 0.01;
+      this.swayAmp = Math.random() * 0.6 + 0.2;
+      this.life = this.rising ? 1 : Infinity;  // rising snowflake punya life
+      this.lifeDecay = this.rising ? 0.008 : 0;
+    }
+    update(dt, intensity) {
+      // Berayun seperti di udara
+      this.sway += this.swaySpeed;
+      this.vx = Math.sin(this.sway) * this.swayAmp * (1 + intensity * 1.5);
+
+      // Saat shake kuat, beri turbulence vertikal
+      if (intensity > 0.3) {
+        const turbulence = (Math.random() - 0.5) * intensity * 1.5;
+        this.y += turbulence;
+      }
+
+      this.x += this.vx;
+      this.y += this.baseVy * (1 + intensity * 3.5);
+
+      // Decay life untuk rising snowflake
+      if (this.rising) {
+        this.life -= this.lifeDecay;
+        this.opacity = Math.max(0, this.life * 0.7);
+      }
+
+      // Wrap horizontal
+      if (this.x < -5) this.x = state.width + 5;
+      if (this.x > state.width + 5) this.x = -5;
+
+      // Cek apakah keluar dari bola (lingkaran)
+      const cx = state.width / 2;
+      const cy = state.height / 2;
+      const r = state.width / 2 - 4;
+      const dx = this.x - cx;
+      const dy = this.y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (this.rising) {
+        // Rising snowflake: hilang ketika life habis atau keluar lingkaran
+        if (this.life <= 0 || dist > r) {
+          return false;
+        }
+      } else {
+        // Falling snowflake: reset ke atas ketika sampai bawah atau keluar
+        if (this.y > state.height + 10 || dist > r + 5) {
+          this.reset({ x: Math.random() * state.width, y: -10 });
+        }
+      }
+      return true;
+    }
+    draw(ctx) {
+      ctx.save();
+      ctx.globalAlpha = this.opacity;
+      // Glow halus
+      const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.5, 'rgba(255,255,255,0.6)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+      ctx.fill();
+      // Inti salju putih
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // ====== Spawn salju naik (saat shake) ======
+  function spawnRisingSnow(count) {
+    for (let i = 0; i < count; i++) {
+      // Mulai dari bagian bawah bola (di atas tanah salju)
+      const x = Math.random() * state.width;
+      const y = state.height * (0.65 + Math.random() * 0.2);
+      state.snowflakes.push(new Snowflake({
+        x: x, y: y, rising: true
+      }));
+    }
+  }
+
+  // ====== Spawn salju ambient (selalu ada sedikit) ======
+  // Saat mendekati hari libur, salju bertambah perlahan-lahan
+  function spawnAmbientSnow() {
+    const f = state.festivityFactor; // 0..1
+    // Max flakes: 40 (jauh) -> 300 (hari H)
+    const maxFlakes = 40 + Math.floor(f * 260);
+    if (state.snowflakes.length < maxFlakes) {
+      // Spawn lebih banyak ketika dekat hari H
+      const burst = 1 + Math.floor(f * 4);
+      for (let i = 0; i < burst; i++) {
+        state.snowflakes.push(new Snowflake({
+          x: Math.random() * state.width,
+          y: -5 - Math.random() * 20
+        }));
+      }
+    }
+  }
+
+  // ====== Shake action ======
+  function shake(intensity) {
+    intensity = Math.max(0, Math.min(1, intensity || 0.8));
+    state.shakeCount++;
+    state.shakeIntensity = Math.min(1.5, state.shakeIntensity + intensity * 0.6);
+
+    // Update level berdasarkan shake count
+    const newLevel = Math.min(10, 1 + Math.floor(state.shakeCount / 5));
+    if (newLevel > state.level) {
+      state.level = newLevel;
+      showFloatingMsg('LEVEL ' + newLevel + '!');
+    } else if (state.shakeCount === 1) {
+      showFloatingMsg('GOYANG!');
+    } else if (state.shakeCount === 10) {
+      showFloatingMsg('Hujan Salju!');
+    } else if (state.shakeCount === 25) {
+      showFloatingMsg('Salju Lebat!');
+    } else if (state.shakeCount === 50) {
+      showFloatingMsg('Badai Salju!');
+    } else if (state.shakeCount === 100) {
+      showFloatingMsg('Master Salju!');
+    }
+
+    // Animasi goyang globe
+    globeStage.classList.remove('shaking');
+    void globeStage.offsetWidth;
+    globeStage.classList.add('shaking');
+
+    // Spawn salju yang naik dari bawah
+    const snowToSpawn = Math.floor(20 + intensity * 60 + state.level * 5);
+    spawnRisingSnow(snowToSpawn);
+
+    updateHUD();
+  }
+
+  // ====== Pesan muncul ======
+  function showFloatingMsg(text) {
+    floatingMsg.textContent = text;
+    floatingMsg.classList.remove('show');
+    void floatingMsg.offsetWidth;
+    floatingMsg.classList.add('show');
+  }
+
+  // ====== Update HUD ======
+  function updateHUD() {
+    shakeCountEl.textContent = state.shakeCount;
+    snowCountEl.textContent = state.snowflakes.length;
+    levelEl.textContent = state.level;
+  }
+
+  // ====== Main animation loop ======
+  let lastTime = performance.now();
+  function loop(now) {
+    const dt = Math.min(50, now - lastTime);
+    lastTime = now;
+
+    // Decay shake intensity perlahan
+    state.shakeIntensity *= 0.985;
+    if (state.shakeIntensity < 0.01) state.shakeIntensity = 0;
+
+    // Spawn ambient snow occasionally
+    // Interval lebih cepat saat dekat hari H (200ms -> 30ms)
+    const spawnInterval = 200 - Math.floor(state.festivityFactor * 170);
+    if (now - state.lastAmbientSpawn > spawnInterval) {
+      spawnAmbientSnow();
+      state.lastAmbientSpawn = now;
+    }
+
+    // Pada hari H: trigger shake lembut otomatis sesekali untuk efek magis
+    if (state.festivityFactor >= 0.99 && Math.random() < 0.008) {
+      spawnRisingSnow(15);
+    }
+    // Dekat hari H (<3 hari): kadang salju naik dengan sendirinya
+    else if (state.festivityFactor >= 0.95 && Math.random() < 0.002) {
+      spawnRisingSnow(10);
+    }
+
+    // Clear canvas
+    ctx.clearRect(0, 0, state.width, state.height);
+
+    // Update & draw semua snowflakes
+    const intensity = state.shakeIntensity;
+    const aliveFlakes = [];
+    for (let i = 0; i < state.snowflakes.length; i++) {
+      const flake = state.snowflakes[i];
+      const stillAlive = flake.update(dt, intensity);
+      if (stillAlive) {
+        flake.draw(ctx);
+        aliveFlakes.push(flake);
+      }
+    }
+    state.snowflakes = aliveFlakes;
+
+    // Update snow count di HUD (tidak setiap frame untuk hemat CPU)
+    if (Math.floor(now / 500) !== Math.floor(lastTime / 500) - 1) {
+      snowCountEl.textContent = state.snowflakes.length;
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // ====== Event listeners ======
+  // Klik / sentuh bola
+  let lastTouchTime = 0;
+  function handleGlobeInteraction(e) {
+    e.preventDefault();
+    const now = Date.now();
+    if (now - lastTouchTime < 100) return;  // throttle
+    lastTouchTime = now;
+    // Hitung posisi relatif untuk intensitas
+    let intensity = 0.7;
+    if (e.touches && e.touches[0]) {
+      intensity = 0.6 + Math.random() * 0.4;
+    }
+    shake(intensity);
+  }
+
+  globeStage.addEventListener('click', handleGlobeInteraction);
+  globeStage.addEventListener('touchstart', handleGlobeInteraction, { passive: false });
+  globeStage.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // Tombol shake
+  shakeBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    shake(1.0);
+  });
+  shakeBtn.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    shake(1.0);
+  }, { passive: false });
+
+  // Drag globe (mouse/touch) untuk shake manual
+  let isDragging = false;
+  let lastDragX = 0, lastDragY = 0;
+  let dragVelocity = 0;
+
+  globeStage.addEventListener('mousedown', function(e) {
+    isDragging = true;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    const dx = e.clientX - lastDragX;
+    const dy = e.clientY - lastDragY;
+    const speed = Math.sqrt(dx * dx + dy * dy);
+    dragVelocity = Math.max(dragVelocity, speed);
+    if (dragVelocity > 25 && Math.random() < 0.15) {
+      shake(Math.min(1, dragVelocity / 80));
+      dragVelocity = 0;
+    }
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+  });
+  document.addEventListener('mouseup', function() {
+    isDragging = false;
+    dragVelocity = 0;
+  });
+
+  // Device motion (shake HP)
+  let lastShakeTime = 0;
+  let lastAcceleration = 0;
+  if (window.DeviceMotionEvent) {
+    window.addEventListener('devicemotion', function(e) {
+      const acc = e.accelerationIncludingGravity || e.acceleration;
+      if (!acc) return;
+      const total = Math.sqrt(
+        (acc.x || 0) * (acc.x || 0) +
+        (acc.y || 0) * (acc.y || 0) +
+        (acc.z || 0) * (acc.z || 0)
+      );
+      const delta = Math.abs(total - lastAcceleration);
+      lastAcceleration = total;
+
+      if (delta > 3) {
+        const now = Date.now();
+        if (now - lastShakeTime > 250) {  // throttle 250ms
+          lastShakeTime = now;
+          const intensity = Math.min(1, delta / 15);
+          shake(intensity);
+        }
+      }
+    });
+  }
+
+  // iOS 13+ butuh permission
+  function requestMotionPermission() {
+    if (typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission().then(function(state) {
+        if (state === 'granted') {
+          console.log('Motion permission granted');
+        }
+      }).catch(function() {});
+    }
+  }
+  document.body.addEventListener('touchstart', requestMotionPermission, { once: true });
+
+  // Resize handler
+  window.addEventListener('resize', function() {
+    resizeCanvas();
+  });
+
+  // ====== Init ======
+  createStars();
+  createOrnaments();
+  createFairyLights();
+  resizeCanvas();
+
+  // Initial ambient snow
+  for (let i = 0; i < 25; i++) {
+    state.snowflakes.push(new Snowflake({
+      x: Math.random() * state.width,
+      y: Math.random() * state.height
+    }));
+  }
+  updateHUD();
+
+  // Hitung countdown awal & update tiap detik
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
